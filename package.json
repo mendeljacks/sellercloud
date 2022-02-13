@@ -1,6 +1,6 @@
 {
     "name": "sellercloud",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "",
     "main": "build/index.js",
     "scripts": {
@@ -11,6 +11,10 @@
     "author": "",
     "license": "ISC",
     "devDependencies": {
-        "husky": "^7.0.4"
+        "husky": "^7.0.4",
+        "ramda": "^0.28.0"
+    },
+    "dependencies": {
+        "memoizee": "^0.4.15"
     }
 }
