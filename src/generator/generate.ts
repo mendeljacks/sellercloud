@@ -1,5 +1,3 @@
-// nodemon --exec "sucrase-node src/generator/generate" --ext ts --ignore src/generator/sellercloud_connector_generated.ts
-
 import { groupBy, prop } from 'ramda'
 // @ts-ignore
 import fs from 'fs'
@@ -34,9 +32,9 @@ const to_typescript_type = el => {
         const type = Object.keys(el.properties || {}).reduce((acc, val) => {
             acc =
                 acc +
-                `${val}${el.required?.includes(val) ? '' : '?'}: ${to_typescript_type(
-                    el.properties[val]
-                )}, `
+                `${val.startsWith('.') ? `'${val}'` : val}${
+                    el.required?.includes(val) ? '' : '?'
+                }: ${to_typescript_type(el.properties[val])}, `
             return acc
         }, ``)
         return `{${type}}`
@@ -70,6 +68,11 @@ const output = Object.keys(s.paths).flatMap(route_str => {
     return Object.keys(route).map(method => {
         const fn_name = `${method}_${route_str_to_route_fn_name(route_str)}`
         const parameters = route[method].parameters || []
+
+        const responses = route[method].responses
+        const $ref = responses?.['200']?.schema?.$ref?.slice(14, Infinity)
+        const response_definition = $ref ? to_typescript_type(s.definitions[$ref]) : 'any'
+
         const body = parameters.filter(el => el.in === 'body')
         const pth = parameters.filter(el => el.in === 'path')
         const query = parameters.filter(el => el.in === 'query')
@@ -94,7 +97,8 @@ const output = Object.keys(s.paths).flatMap(route_str => {
         const last_param =
             method === 'get' && query.length > 0 ? 'query' : body.length > 0 ? 'body' : null
         ;('body')
-        const output = `export const ${fn_name} = async (
+        const output = `export type ${fn_name + '_type'} = ${response_definition}
+export const ${fn_name} = async (
     base_url: string, 
     token: string, ${
         pth.length > 0
@@ -113,7 +117,7 @@ const output = Object.keys(s.paths).flatMap(route_str => {
                 : ``
         }
     axios: Function
-): Promise<{data: any}> => {
+): Promise<{data: ${fn_name + '_type'}}> => {
     return axios({
         method: '${method.toUpperCase()}', 
         url: \`${`\${base_url}${sanitize_route_str(route_str)}`}\`,
@@ -134,8 +138,4 @@ const output = Object.keys(s.paths).flatMap(route_str => {
     })
 })
 
-fs.writeFileSync(
-    'src/generator/sellercloud_connector_generated.ts',
-    `${output.join('\n\n')}`,
-    'utf-8'
-)
+fs.writeFileSync('src/index.ts', `${output.join('\n\n')}`, 'utf-8')
