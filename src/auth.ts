@@ -1,8 +1,8 @@
-import * as memoizee from 'memoizee'
+import mem from 'mem'
 
 export type SellercloudAuth = { user_name: string; password: string; server_id: string }
 const safety_margin = 10000
-export const auth_to_token = memoizee(
+export const auth_to_token = mem(
     async (auth: SellercloudAuth, axios) => {
         const response = await axios({
             method: 'POST',
@@ -15,7 +15,7 @@ export const auth_to_token = memoizee(
 
         return response.data.access_token
     },
-    { promise: true, maxAge: 60 * 60 * 1000 - safety_margin, primitive: true }
+    { maxAge: 60 * 60 * 1000 - safety_margin, cacheKey: args => JSON.stringify(args[0]) }
 )
 
 export const auth_to_base_url = (auth: SellercloudAuth): string => {
